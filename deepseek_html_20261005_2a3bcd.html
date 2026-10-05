@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="description" content="A simple daily task catcher">
+<title>Daily Catcher</title>
+
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem("dc_theme") || "light";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  })();
+</script>
+
+<style>
+  /* ---------- Theme tokens ---------- */
+  :root {
+    /* Light: white + slate + cyan */
+    --bg-1: #f0f4f8;
+    --bg-2: #e2e8f0;
+    --surface: #ffffff;
+    --surface-soft: #f8fafc;
+    --border: #dbe3ec;
+    --border-soft: rgba(15, 23, 42, 0.05);
+    --text: #0f172a;
+    --text-dim: #64748b;
+    --text-mute: #94a3b8;
+    --accent: #06b6d4;             /* cyan */
+    --accent-deep: #0891b2;
+    --accent-soft: #cffafe;
+    --priority-high: #ef4444;
+    --priority-med: #f59e0b;
+    --priority-low: #10b981;
+    --success: #10b981;
+    --shadow-card: 0 6px 24px -8px rgba(15, 23, 42, 0.1);
+    --shadow-pill: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --progress-bg: #e2e8f0;
+    --output-bg-1: #0f172a;
+    --output-bg-2: #1e293b;
+    --output-text: #f1f5f9;
+    --output-label: #94a3b8;
+    --output-currency: #22d3ee;
+  }
+
+  [data-theme="dark"] {
+    /* Dark: deep slate + cyan + electric blue */
+    --bg-1: #0a0e1a;
+    --bg-2: #050810;
+    --surface: #141c2e;
+    --surface-soft: #0f1626;
+    --border: #1e2a44;
+    --border-soft: rgba(255, 255, 255, 0.05);
+    --text: #e8f0ff;
+    --text-dim: #8ba3c7;
+    --text-mute: #566a8a;
+    --accent: #22d3ee;             /* cyan */
+    --accent-deep: #0891b2;
+    --accent-soft: #0e2a3a;
+    --priority-high: #f87171;
+    --priority-med: #fbbf24;
+    --priority-low: #34d399;
+    --success: #34d399;
+    --shadow-card: 0 6px 24px -8px rgba(0, 0, 0, 0.6);
+    --shadow-pill: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --progress-bg: #1e2a44;
+    --output-bg-1: #050810;
+    --output-bg-2: #141c2e;
+    --output-text: #e8f0ff;
+    --output-label: #8ba3c7;
+    --output-currency: #22d3ee;
+  }
+
+  /* ---------- Reset & base ---------- */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 1rem;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    transition: background 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+  }
+
+  /* ---------- Layout ---------- */
+  .app {
+    width: 100%;
+    max-width: 480px;
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0 0.25rem;
+    gap: 0.5rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    color: #fff;
+    font-size: 1.15rem;
+    background: linear-gradient(135deg, var(--accent), #3b82f6);
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.4);
+    flex-shrink: 0;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.05rem;
+    transition: 0.15s;
+    font-family: inherit;
+    padding: 0;
+    box-shadow: var(--shadow-pill);
+    line-height: 1;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+  .theme-toggle:active { transform: scale(0.94); }
+
+  /* ---------- Stats card ---------- */
+  .stats-card {
+    background: linear-gradient(135deg, var(--output-bg-1), var(--output-bg-2));
+    color: var(--output-text);
+    border-radius: 1.5rem;
+    padding: 1.4rem 1.4rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+  }
+  .stats-card::before {
+    content: "";
+    position: absolute;
+    top: -40%;
+    right: -20%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.15), transparent 70%);
+    pointer-events: none;
+  }
+
+  .stats-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.9rem;
+    gap: 0.6rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stats-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--output-label);
+    margin-bottom: 0.25rem;
+  }
+
+  .stats-count {
+    font-size: 1.9rem;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stats-count .dim {
+    color: var(--output-label);
+    font-weight: 600;
+    font-size: 1.2rem;
+  }
+
+  .streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0.4rem 0.75rem;
+    background: rgba(34, 211, 238, 0.12);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--output-currency);
+    white-space: nowrap;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 30px;
+    background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    transition: width 0.4s ease;
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+  }
+
+  /* ---------- Add task ---------- */
+  .add-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 1.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .add-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .add-input {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    background: var(--surface-soft);
+    border: 2px solid var(--border);
+    border-radius: 0.9rem;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text);
+    outline: none;
+    transition: 0.15s;
+    min-width: 0;
+  }
+  .add-input:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15);
+  }
+  .add-input::placeholder { color: var(--text-mute); }
+
+  .add-btn {
+    padding: 0 1.1rem;
+    background: linear-gradient(135deg, var(--accent), #3b82f6);
+    color: #fff;
+    border: none;
+    border-radius: 0.9rem;
+    font-family: inherit;
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.15s;
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+  }
+  .add-btn:active { transform: scale(0.96); }
+
+  .add-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .time-input {
+    flex: 1;
+    padding: 0.65rem 0.9rem;
+    background: var(--surface-soft);
+    border: 2px solid var(--border);
+    border-radius: 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+    min-width: 0;
+  }
+  .time-input:focus { border-color: var(--accent); }
+
+  .priority-select {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  .prio-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface-soft);
+    cursor: pointer;
+    transition: 0.15s;
+    padding: 0;
+    position: relative;
+  }
+  .prio-btn::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    transition: 0.15s;
+  }
+  .prio-btn[data-prio="high"]::after { background: var(--priority-high); }
+  .prio-btn[data-prio="med"]::after  { background: var(--priority-med); }
+  .prio-btn[data-prio="low"]::after  { background: var(--priority-low); }
+  .prio-btn.active {
+    border-color: var(--accent);
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+  }
+
+  /* ---------- Tasks list ---------- */
+  .tasks-card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 1.5rem;
+    padding: 0.5rem;
+    box-shadow: var(--shadow-card);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .task {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 0.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    transition: 0.15s;
+    position: relative;
+  }
+  .task:last-child { border-bottom: none; }
+
+  .task-check {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface-soft);
+    cursor: pointer;
+    transition: 0.2s;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    font-size: 0.85rem;
+    font-weight: 900;
+  }
+  .task.done .task-check {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  }
+
+  .task-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .task-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+    transition: 0.2s;
+  }
+  .task.done .task-text {
+    color: var(--text-mute);
+    text-decoration: line-through;
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+  .task-meta .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .task-meta .dot.high { background: var(--priority-high); box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+  .task-meta .dot.med  { background: var(--priority-med); box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+  .task-meta .dot.low  { background: var(--priority-low); box-shadow: 0 0 6px rgba(16, 185, 129, 0.5); }
+
+  .task-delete {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-mute);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.15s;
+    font-family: inherit;
+    padding: 0;
+  }
+  .task-delete:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .empty-state {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-mute);
+    font-size: 0.9rem;
+  }
+  .empty-state .big {
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+  }
+
+  /* ---------- Section title ---------- */
+  .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .section-title .count {
+    color: var(--text-mute);
+    font-weight: 600;
+  }
+  .clear-done {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px 8px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .clear-done:hover { background: var(--accent-soft); }
+
+  /* ---------- Signature ---------- */
+  .signature {
+    margin-top: 1rem;
+    padding: 0.5rem 0.75rem 0 0;
+    text-align: right;
+    font-family: "Brush Script MT", "Segoe Script", "Dancing Script", cursive;
+    font-size: 1.15rem;
+    font-style: italic;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    opacity: 0.75;
+  }
+  .signature::before {
+    content: "— ";
+    font-style: normal;
+    color: var(--text-mute);
+  }
+</style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">☑️</span>
+        <span>Daily Catcher</span>
+      </div>
+      <div class="header-controls">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme">🌙</button>
+      </div>
+    </header>
+
+    <!-- Stats card -->
+    <section class="stats-card">
+      <div class="stats-top">
+        <div>
+          <div class="stats-label">Today's progress</div>
+          <div class="stats-count">
+            <span id="doneCount">0</span>
+            <span class="dim"> / <span id="totalCount">0</span></span>
+          </div>
+        </div>
+        <div class="streak" id="streakBadge" title="Days in a row with all tasks done">
+          🔥 <span id="streakCount">0</span>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </section>
+
+    <!-- Add task -->
+    <section class="add-card">
+      <div class="add-row">
+        <input
+          type="text"
+          class="add-input"
+          id="taskInput"
+          placeholder="What do you need to do?"
+          maxlength="120"
+          autocomplete="off"
+        >
+        <button class="add-btn" id="addBtn" type="button" aria-label="Add task">+</button>
+      </div>
+      <div class="add-meta">
+        <input
+          type="time"
+          class="time-input"
+          id="timeInput"
+          aria-label="Optional time"
+        >
+        <div class="priority-select" role="group" aria-label="Priority">
+          <button class="prio-btn" data-prio="high" type="button" title="High priority" aria-label="High priority"></button>
+          <button class="prio-btn active" data-prio="med" type="button" title="Medium priority" aria-label="Medium priority"></button>
+          <button class="prio-btn" data-prio="low" type="button" title="Low priority" aria-label="Low priority"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tasks list -->
+    <section class="tasks-card">
+      <div class="section-title">
+        <span>Your tasks <span class="count" id="taskCountLabel"></span></span>
+        <button class="clear-done" id="clearDoneBtn" type="button">Clear done</button>
+      </div>
+      <div id="taskList"></div>
+    </section>
+
+    <!-- Signature -->
+    <div class="signature">Vuja Tsoaela</div>
+
+  </div>
+
+  <script>
+  (function () {
+    "use strict";
+
+    /* ---------- Storage keys ---------- */
+    var KEY_TASKS = "dc_tasks";
+    var KEY_THEME = "dc_theme";
+    var KEY_STREAK = "dc_streak";
+
+    /* ---------- State ---------- */
+    var tasks = loadTasks();
+    var theme = loadString(KEY_THEME, "light");
+    var streak = loadNumber(KEY_STREAK, 0);
+    var selectedPriority = "med";
+
+    /* ---------- DOM ---------- */
+    var themeToggle = document.getElementById("themeToggle");
+    var taskInput = document.getElementById("taskInput");
+    var timeInput = document.getElementById("timeInput");
+    var addBtn = document.getElementById("addBtn");
+    var taskList = document.getElementById("taskList");
+    var doneCount = document.getElementById("doneCount");
+    var totalCount = document.getElementById("totalCount");
+    var progressFill = document.getElementById("progressFill");
+    var streakCount = document.getElementById("streakCount");
+    var streakBadge = document.getElementById("streakBadge");
+    var taskCountLabel = document.getElementById("taskCountLabel");
+    var clearDoneBtn = document.getElementById("clearDoneBtn");
+
+    var prioBtns = document.querySelectorAll(".prio-btn");
+
+    /* ---------- Helpers ---------- */
+    function loadTasks() {
+      try {
+        var raw = localStorage.getItem(KEY_TASKS);
+        if (!raw) return [];
+        var arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function saveTasks() {
+      try { localStorage.setItem(KEY_TASKS, JSON.stringify(tasks)); } catch (e) {}
+    }
+
+    function loadString(key, fallback) {
+      try {
+        var v = localStorage.getItem(key);
+        return v === null ? fallback : v;
+      } catch (e) { return fallback; }
+    }
+
+    function loadNumber(key, fallback) {
+      try {
+        var v = localStorage.getItem(key);
+        if (v === null) return fallback;
+        var n = parseInt(v, 10);
+        return isFinite(n) ? n : fallback;
+      } catch (e) { return fallback; }
+    }
+
+    function save(key, value) {
+      try { localStorage.setItem(key, String(value)); } catch (e) {}
+    }
+
+    function todayKey() {
+      var d = new Date();
+      return d.getFullYear() + "-" +
+             String(d.getMonth() + 1).padStart(2, "0") + "-" +
+             String(d.getDate()).padStart(2, "0");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    /* ---------- Theme ---------- */
+    function applyTheme() {
+      document.documentElement.setAttribute("data-theme", theme);
+      themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", theme === "dark" ? "#0a0e1a" : "#f0f4f8");
+    }
+
+    function toggleTheme() {
+      theme = theme === "dark" ? "light" : "dark";
+      save(KEY_THEME, theme);
+      applyTheme();
+    }
+
+    /* ---------- Render ---------- */
+    function render() {
+      var pending = tasks.filter(function (t) { return !t.done; });
+      var done = tasks.filter(function (t) { return t.done; });
+      var ordered = pending.concat(done);
+
+      var total = tasks.length;
+      var doneN = done.length;
+      doneCount.textContent = doneN;
+      totalCount.textContent = total;
+
+      var pct = total === 0 ? 0 : Math.round((doneN / total) * 100);
+      progressFill.style.width = pct + "%";
+
+      streakCount.textContent = streak;
+      taskCountLabel.textContent = total > 0 ? "(" + total + ")" : "";
+
+      if (ordered.length === 0) {
+        taskList.innerHTML =
+          '<div class="empty-state">' +
+            '<div class="big">⚡</div>' +
+            '<div>Nothing here yet.</div>' +
+            '<div style="margin-top:4px">Add your first task above.</div>' +
+          '</div>';
+        return;
+      }
+
+      var html = "";
+      ordered.forEach(function (t) {
+        var safeText = escapeHtml(t.text);
+        var prioLabel = t.priority === "high" ? "High" :
+                        t.priority === "low" ? "Low" : "Medium";
+        var timeHtml = t.time ? " · " + escapeHtml(t.time) : "";
+        html +=
+          '<div class="task' + (t.done ? " done" : "") + '" data-id="' + escapeHtml(t.id) + '">' +
+            '<button class="task-check" type="button" aria-label="Toggle done">✓</button>' +
+            '<div class="task-body">' +
+              '<div class="task-text">' + safeText + '</div>' +
+              '<div class="task-meta">' +
+                '<span class="dot ' + t.priority + '"></span>' +
+                '<span>' + prioLabel + timeHtml + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<button class="task-delete" type="button" aria-label="Delete task">×</button>' +
+          '</div>';
+      });
+      taskList.innerHTML = html;
+
+      Array.prototype.forEach.call(taskList.querySelectorAll(".task-check"), function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.closest(".task").getAttribute("data-id");
+          toggleTask(id);
+        });
+      });
+      Array.prototype.forEach.call(taskList.querySelectorAll(".task-delete"), function (btn) {
+        btn.addEventListener("click", function () {
+          var id = btn.closest(".task").getAttribute("data-id");
+          deleteTask(id);
+        });
+      });
+
+      checkStreak();
+    }
+
+    /* ---------- Streak logic ---------- */
+    function checkStreak() {
+      if (tasks.length === 0) return;
+      var allDone = tasks.every(function (t) { return t.done; });
+      if (!allDone) return;
+
+      var lastDate = null;
+      try { lastDate = localStorage.getItem("dc_streak_date"); } catch (e) {}
+
+      var today = todayKey();
+      if (lastDate === today) return;
+
+      var yesterday = (function () {
+        var d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.getFullYear() + "-" +
+               String(d.getMonth() + 1).padStart(2, "0") + "-" +
+               String(d.getDate()).padStart(2, "0");
+      })();
+
+      if (lastDate === yesterday) {
+        streak = streak + 1;
+      } else {
+        streak = 1;
+      }
+      save(KEY_STREAK, streak);
+      save("dc_streak_date", today);
+      streakCount.textContent = streak;
+
+      streakBadge.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }],
+        { duration: 400, easing: "ease-out" }
+      );
+    }
+
+    /* ---------- Task actions ---------- */
+    function addTask() {
+      var text = taskInput.value.trim();
+      if (!text) {
+        taskInput.focus();
+        return;
+      }
+      var task = {
+        id: String(Date.now()) + Math.random().toString(36).slice(2, 7),
+        text: text,
+        time: timeInput.value || "",
+        priority: selectedPriority,
+        done: false,
+        created: Date.now()
+      };
+      tasks.unshift(task);
+      saveTasks();
+      taskInput.value = "";
+      timeInput.value = "";
+      render();
+      taskInput.focus();
+    }
+
+    function toggleTask(id) {
+      for (var i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === id) {
+          tasks[i].done = !tasks[i].done;
+          break;
+        }
+      }
+      saveTasks();
+      render();
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(function (t) { return t.id !== id; });
+      saveTasks();
+      render();
+    }
+
+    function clearDone() {
+      tasks = tasks.filter(function (t) { return !t.done; });
+      saveTasks();
+      render();
+    }
+
+    /* ---------- Events ---------- */
+    themeToggle.addEventListener("click", toggleTheme);
+    addBtn.addEventListener("click", addTask);
+
+    taskInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") addTask();
+    });
+
+    Array.prototype.forEach.call(prioBtns, function (btn) {
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(prioBtns, function (b) {
+          b.classList.remove("active");
+        });
+        btn.classList.add("active");
+        selectedPriority = btn.getAttribute("data-prio");
+      });
+    });
+
+    clearDoneBtn.addEventListener("click", clearDone);
+
+    /* ---------- Init ---------- */
+    applyTheme();
+    render();
+  })();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
