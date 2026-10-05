@@ -392,25 +392,27 @@
 
   .day-picker {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
     margin-bottom: 0.55rem;
     align-items: center;
   }
 
   .day-btn {
-    padding: 0.35rem 0.55rem;
-    border-radius: 0.5rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 0.6rem;
     border: 1.5px solid var(--border);
     background: var(--surface-soft);
     color: var(--text-dim);
     font-family: inherit;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
     transition: 0.12s;
     letter-spacing: 0.2px;
-    min-width: 34px;
+    min-width: 42px;
+    min-height: 38px;
+    line-height: 1;
   }
   .day-btn.active {
     background: var(--accent);
@@ -419,8 +421,20 @@
     box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
   }
   .day-btn.every {
-    padding: 0.35rem 0.7rem;
+    padding: 0.5rem 0.85rem;
     min-width: auto;
+  }
+
+  .day-summary {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .day-summary strong {
+    color: var(--accent);
+    font-weight: 800;
   }
 
   .add-actions {
@@ -428,7 +442,7 @@
     justify-content: flex-end;
   }
   .add-submit {
-    padding: 0.6rem 1.1rem;
+    padding: 0.65rem 1.2rem;
     background: linear-gradient(135deg, var(--accent), #3b82f6);
     color: #fff;
     border: none;
@@ -439,6 +453,7 @@
     cursor: pointer;
     transition: 0.15s;
     box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+    min-height: 42px;
   }
   .add-submit:active { transform: scale(0.97); }
 
@@ -618,6 +633,8 @@
             <button class="day-btn" data-day="0" type="button">Sun</button>
           </div>
 
+          <div class="day-summary" id="daySummary"></div>
+
           <div class="add-actions">
             <button class="add-submit" id="addBtn" type="button">+ Add</button>
           </div>
@@ -644,7 +661,6 @@
     var KEY_DONE = "dc_done";
     var KEY_HISTORY = "dc_history";
     var KEY_THEME = "dc_theme";
-    var KEY_LAST_RESET = "dc_last_reset";
 
     var responsibilities = loadJSON(KEY_RESP, []);
     var doneMap = loadJSON(KEY_DONE, {});
@@ -668,12 +684,16 @@
     var sectionTitle = document.getElementById("sectionTitle");
     var sectionProgress = document.getElementById("sectionProgress");
     var dayPicker = document.getElementById("dayPicker");
+    var daySummary = document.getElementById("daySummary");
 
     var tabCountDaily = document.getElementById("tabCountDaily");
     var tabCountWeekly = document.getElementById("tabCountWeekly");
     var tabCountMonthly = document.getElementById("tabCountMonthly");
 
     var freqTabs = document.querySelectorAll(".freq-tab");
+    var dayBtns = dayPicker.querySelectorAll(".day-btn");
+
+    var DAY_MAP = { "0":"Sun","1":"Mon","2":"Tue","3":"Wed","4":"Thu","5":"Fri","6":"Sat" };
 
     /* ---------- Helpers ---------- */
     function loadJSON(key, fallback) {
@@ -710,14 +730,10 @@
         return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
       }
       if (freq === "weekly") {
-        /* Days since Unix epoch, divided into 7-day blocks.
-           Week boundary is Monday (because 1 Jan 1970 was a Thursday,
-           we offset by 4 to align Monday). */
         var days = Math.floor(d.getTime() / 86400000);
         var weekNo = Math.floor((days + 4) / 7);
         return "W" + weekNo;
       }
-      /* monthly */
       return d.getFullYear() + "-" + pad(d.getMonth() + 1);
     }
 
@@ -728,12 +744,11 @@
       return days[d.getDay()] + ", " + d.getDate() + " " + months[d.getMonth()] + " " + d.getFullYear();
     }
 
-    /* ---------- Applicability ---------- */
     function isApplicableOnToday(r) {
       if (r.freq !== "daily") return true;
       if (!r.days || r.days.length === 0 || r.days.indexOf("every") !== -1) return true;
-      var today = new Date().getDay();
-      return r.days.indexOf(String(today)) !== -1;
+      var today = String(new Date().getDay());
+      return r.days.indexOf(today) !== -1;
     }
 
     /* ---------- Done tracking ---------- */
@@ -754,18 +769,52 @@
       saveJSON(KEY_DONE, doneMap);
     }
 
-    /* ---------- Auto-reset weekly/monthly on rollover ---------- */
-    function autoResetIfNeeded() {
-      var last = loadJSON(KEY_LAST_RESET, {});
-      var nowDaily = periodKey("daily");
-      var nowWeekly = periodKey("weekly");
-      var nowMonthly = periodKey("monthly");
-
-      if (last.daily !== nowDaily) last.daily = nowDaily;
-      if (last.weekly !== nowWeekly) last.weekly = nowWeekly;
-      if (last.monthly !== nowMonthly) last.monthly = nowMonthly;
-      saveJSON(KEY_LAST_RESET, last);
+    /* ---------- Day picker UI ---------- */
+    function updateDayPickerUI() {
+      dayBtns.forEach(function (btn) {
+        var d = btn.getAttribute("data-day");
+        var isActive;
+        if (d === "every") {
+          isActive = selectedDays.every;
+        } else {
+          isActive = !selectedDays.every && selectedDays.days.indexOf(d) !== -1;
+        }
+        btn.classList.toggle("active", isActive);
+      });
+      updateDaySummary();
     }
+
+    function updateDaySummary() {
+      if (activeFreq !== "daily") {
+        daySummary.style.display = "none";
+        return;
+      }
+      daySummary.style.display = "block";
+      if (selectedDays.every) {
+        daySummary.innerHTML = 'Saving as: <strong>Every day</strong>';
+      } else if (selectedDays.days.length === 0) {
+        daySummary.innerHTML = 'Saving as: <strong>nothing selected</strong>';
+      } else {
+        var names = selectedDays.days.map(function (d) { return DAY_MAP[d] || d; });
+        daySummary.innerHTML = 'Saving as: <strong>' + escapeHtml(names.join(", ")) + '</strong>';
+      }
+    }
+
+    dayBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var d = btn.getAttribute("data-day");
+        if (d === "every") {
+          selectedDays.every = true;
+          selectedDays.days = [];
+        } else {
+          selectedDays.every = false;
+          var i = selectedDays.days.indexOf(d);
+          if (i === -1) selectedDays.days.push(d);
+          else selectedDays.days.splice(i, 1);
+        }
+        updateDayPickerUI();
+      });
+    });
 
     /* ---------- Render ---------- */
     function renderFreqTabs() {
@@ -797,6 +846,7 @@
       sectionProgress.classList.toggle("zero", doneCount === 0);
 
       dayPicker.style.display = freq === "daily" ? "flex" : "none";
+      updateDaySummary();
 
       if (items.length === 0) {
         var msg = freq === "daily"
@@ -818,8 +868,7 @@
           if (!r.days || r.days.length === 0 || r.days.indexOf("every") !== -1) {
             dayLabel = "Every day";
           } else {
-            var map = { "0":"Sun","1":"Mon","2":"Tue","3":"Wed","4":"Thu","5":"Fri","6":"Sat" };
-            var names = r.days.map(function (d) { return map[d] || d; });
+            var names = r.days.map(function (d) { return DAY_MAP[d] || d; });
             dayLabel = names.join(", ");
           }
         }
@@ -967,18 +1016,20 @@
     /* ---------- Add ---------- */
     function addResponsibility() {
       var text = taskInput.value.trim();
-      if (!text) { taskInput.focus(); return; }
+      if (!text) {
+        taskInput.focus();
+        return;
+      }
 
       var days = [];
       if (activeFreq === "daily") {
         if (selectedDays.every) {
           days = ["every"];
+        } else if (selectedDays.days.length === 0) {
+          alert("Pick at least one day, or tap 'Every day'.");
+          return;
         } else {
           days = selectedDays.days.slice();
-          if (days.length === 0) {
-            alert("Pick at least one day, or choose 'Every day'.");
-            return;
-          }
         }
       }
 
@@ -1001,7 +1052,6 @@
       var missed = [];
       var open = [];
 
-      /* Today's applicable daily items */
       responsibilities.filter(function (r) {
         return r.freq === "daily" && isApplicableOnToday(r);
       }).forEach(function (r) {
@@ -1009,7 +1059,6 @@
         else missed.push(r.text);
       });
 
-      /* Weekly + monthly — whatever is incomplete stays "open" */
       ["weekly","monthly"].forEach(function (freq) {
         responsibilities.filter(function (r) { return r.freq === freq; }).forEach(function (r) {
           if (isDone(freq, r.id)) {
@@ -1035,7 +1084,7 @@
       };
 
       history.unshift(record);
-      history = history.slice(0, 90);
+      history = history.slice(0, 365);
       saveJSON(KEY_HISTORY, history);
 
       setTab("history");
@@ -1079,33 +1128,6 @@
       applyTheme();
     }
 
-    /* ---------- Day picker ---------- */
-    function updateDayPickerUI() {
-      var everyBtn = dayPicker.querySelector('[data-day="every"]');
-      everyBtn.classList.toggle("active", selectedDays.every);
-      Array.prototype.forEach.call(dayPicker.querySelectorAll('.day-btn:not(.every)'), function (b) {
-        var d = b.getAttribute("data-day");
-        b.classList.toggle("active", !selectedDays.every && selectedDays.days.indexOf(d) !== -1);
-      });
-    }
-
-    dayPicker.addEventListener("click", function (e) {
-      var btn = e.target.closest(".day-btn");
-      if (!btn) return;
-      var day = btn.getAttribute("data-day");
-
-      if (day === "every") {
-        selectedDays.every = true;
-        selectedDays.days = [];
-      } else {
-        selectedDays.every = false;
-        var i = selectedDays.days.indexOf(day);
-        if (i === -1) selectedDays.days.push(day);
-        else selectedDays.days.splice(i, 1);
-      }
-      updateDayPickerUI();
-    });
-
     /* ---------- Events ---------- */
     themeToggle.addEventListener("click", toggleTheme);
     tabToday.addEventListener("click", function () { setTab("today"); });
@@ -1124,7 +1146,6 @@
     });
 
     /* ---------- Init ---------- */
-    autoResetIfNeeded();
     dateLabel.textContent = todayLong();
     applyTheme();
     updateDayPickerUI();
