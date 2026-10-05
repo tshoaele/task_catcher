@@ -410,9 +410,11 @@
     cursor: pointer;
     transition: 0.12s;
     letter-spacing: 0.2px;
-    min-width: 42px;
-    min-height: 38px;
+    min-width: 46px;
+    min-height: 40px;
     line-height: 1;
+    position: relative;
+    z-index: 1;
   }
   .day-btn.active {
     background: var(--accent);
@@ -629,8 +631,6 @@
             <button class="day-btn" data-day="3" type="button">Wed</button>
             <button class="day-btn" data-day="4" type="button">Thu</button>
             <button class="day-btn" data-day="5" type="button">Fri</button>
-            <button class="day-btn" data-day="6" type="button">Sat</button>
-            <button class="day-btn" data-day="0" type="button">Sun</button>
           </div>
 
           <div class="day-summary" id="daySummary"></div>
@@ -686,14 +686,10 @@
     var dayPicker = document.getElementById("dayPicker");
     var daySummary = document.getElementById("daySummary");
 
-    var tabCountDaily = document.getElementById("tabCountDaily");
-    var tabCountWeekly = document.getElementById("tabCountWeekly");
-    var tabCountMonthly = document.getElementById("tabCountMonthly");
-
     var freqTabs = document.querySelectorAll(".freq-tab");
     var dayBtns = dayPicker.querySelectorAll(".day-btn");
 
-    var DAY_MAP = { "0":"Sun","1":"Mon","2":"Tue","3":"Wed","4":"Thu","5":"Fri","6":"Sat" };
+    var DAY_MAP = { "1":"Mon","2":"Tue","3":"Wed","4":"Thu","5":"Fri" };
 
     /* ---------- Helpers ---------- */
     function loadJSON(key, fallback) {
@@ -723,7 +719,7 @@
     }
     function pad(n) { return String(n).padStart(2, "0"); }
 
-    /* ---------- Period keys (hour-safe) ---------- */
+    /* ---------- Period keys ---------- */
     function periodKey(freq) {
       var d = new Date();
       if (freq === "daily") {
@@ -771,7 +767,7 @@
 
     /* ---------- Day picker UI ---------- */
     function updateDayPickerUI() {
-      dayBtns.forEach(function (btn) {
+      Array.prototype.forEach.call(dayBtns, function (btn) {
         var d = btn.getAttribute("data-day");
         var isActive;
         if (d === "every") {
@@ -800,21 +796,29 @@
       }
     }
 
-    dayBtns.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var d = btn.getAttribute("data-day");
-        if (d === "every") {
-          selectedDays.every = true;
-          selectedDays.days = [];
-        } else {
-          selectedDays.every = false;
-          var i = selectedDays.days.indexOf(d);
-          if (i === -1) selectedDays.days.push(d);
-          else selectedDays.days.splice(i, 1);
-        }
-        updateDayPickerUI();
-      });
-    });
+    /* Bind each day button individually — works on every browser */
+    function bindDayButtons() {
+      var i;
+      for (i = 0; i < dayBtns.length; i++) {
+        (function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var d = btn.getAttribute("data-day");
+            if (d === "every") {
+              selectedDays.every = true;
+              selectedDays.days = [];
+            } else {
+              selectedDays.every = false;
+              var idx = selectedDays.days.indexOf(d);
+              if (idx === -1) selectedDays.days.push(d);
+              else selectedDays.days.splice(idx, 1);
+            }
+            updateDayPickerUI();
+          });
+        })(dayBtns[i]);
+      }
+    }
 
     /* ---------- Render ---------- */
     function renderFreqTabs() {
@@ -1146,6 +1150,7 @@
     });
 
     /* ---------- Init ---------- */
+    bindDayButtons();
     dateLabel.textContent = todayLong();
     applyTheme();
     updateDayPickerUI();
