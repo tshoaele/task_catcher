@@ -23,7 +23,6 @@
 </script>
 
 <style>
-  /* ---------- Theme tokens ---------- */
   :root {
     --bg-1: #f0f4f8;
     --bg-2: #e2e8f0;
@@ -73,10 +72,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
+  html, body { height: 100%; margin: 0; }
 
   body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -99,7 +95,6 @@
     flex-direction: column;
   }
 
-  /* ---------- Header ---------- */
   .header {
     display: flex;
     align-items: center;
@@ -159,7 +154,6 @@
   .theme-toggle:hover { border-color: var(--accent); }
   .theme-toggle:active { transform: scale(0.94); }
 
-  /* ---------- View tabs (Today / History) ---------- */
   .view-tabs {
     display: flex;
     background: var(--surface-soft);
@@ -187,7 +181,6 @@
     box-shadow: var(--shadow-pill);
   }
 
-  /* ---------- Frequency tabs ---------- */
   .freq-tabs {
     display: flex;
     gap: 0.4rem;
@@ -206,7 +199,6 @@
     font-family: inherit;
     transition: 0.15s;
     letter-spacing: 0.3px;
-    position: relative;
   }
   .freq-tab.active {
     background: linear-gradient(135deg, var(--accent), #3b82f6);
@@ -223,7 +215,6 @@
     letter-spacing: 0;
   }
 
-  /* ---------- Date label ---------- */
   .date-label {
     text-align: center;
     font-size: 0.8rem;
@@ -233,7 +224,6 @@
     margin-bottom: 0.9rem;
   }
 
-  /* ---------- Section (single visible) ---------- */
   .section {
     background: var(--surface);
     border: 1px solid var(--border-soft);
@@ -269,7 +259,6 @@
   }
   .section-progress.zero { color: var(--text-mute); }
 
-  /* ---------- Task ---------- */
   .task {
     display: flex;
     align-items: center;
@@ -340,9 +329,7 @@
     letter-spacing: 0.3px;
     text-transform: uppercase;
   }
-  [data-theme="dark"] .day-chip {
-    color: var(--accent);
-  }
+  [data-theme="dark"] .day-chip { color: var(--accent); }
 
   .task-delete {
     width: 32px;
@@ -378,7 +365,6 @@
     opacity: 0.5;
   }
 
-  /* ---------- Add form ---------- */
   .add-form {
     border-top: 1px solid var(--border-soft);
     padding: 0.7rem 0.4rem 0.3rem;
@@ -456,7 +442,6 @@
   }
   .add-submit:active { transform: scale(0.97); }
 
-  /* ---------- End day ---------- */
   .end-day-btn {
     width: 100%;
     padding: 1.1rem;
@@ -483,7 +468,6 @@
     background: linear-gradient(135deg, #22d3ee, #3b82f6);
   }
 
-  /* ---------- History ---------- */
   .history-item {
     background: var(--surface);
     border: 1px solid var(--border-soft);
@@ -559,7 +543,6 @@
     opacity: 0.4;
   }
 
-  /* ---------- Signature ---------- */
   .signature {
     margin-top: 1rem;
     padding: 0.5rem 0.75rem 0 0;
@@ -584,7 +567,6 @@
 <body>
   <div class="app">
 
-    <!-- Header -->
     <header class="header">
       <div class="brand">
         <span class="brand-icon" aria-hidden="true">☑️</span>
@@ -595,18 +577,14 @@
       </div>
     </header>
 
-    <!-- View tabs -->
     <div class="view-tabs">
       <button class="view-tab active" id="tabToday" type="button">Today</button>
       <button class="view-tab" id="tabHistory" type="button">History</button>
     </div>
 
-    <!-- TODAY VIEW -->
     <div id="todayView">
-
       <div class="date-label" id="dateLabel"></div>
 
-      <!-- Frequency tabs -->
       <div class="freq-tabs">
         <button class="freq-tab active" data-freq="daily" type="button">
           Daily<span class="count" id="tabCountDaily">0/0</span>
@@ -619,7 +597,6 @@
         </button>
       </div>
 
-      <!-- Single section, content switches -->
       <section class="section">
         <div class="section-head">
           <div class="section-title" id="sectionTitle">Daily</div>
@@ -627,11 +604,9 @@
         </div>
         <div id="taskList"></div>
 
-        <!-- Add form -->
         <div class="add-form">
           <input type="text" id="taskInput" placeholder="Add a duty..." maxlength="120" autocomplete="off">
 
-          <!-- Day picker (only for daily) -->
           <div class="day-picker" id="dayPicker">
             <button class="day-btn every active" data-day="every" type="button">Every day</button>
             <button class="day-btn" data-day="1" type="button">Mon</button>
@@ -649,34 +624,28 @@
         </div>
       </section>
 
-      <!-- End day -->
       <button class="end-day-btn" id="endDayBtn" type="button">
         🌙 End Day — Save Record
       </button>
-
     </div>
 
-    <!-- HISTORY VIEW -->
     <div id="historyView" class="hidden">
       <div id="historyList"></div>
     </div>
 
-    <!-- Signature -->
     <div class="signature">Vuja Tsoaela</div>
-
   </div>
 
   <script>
   (function () {
     "use strict";
 
-    /* ---------- Storage keys ---------- */
     var KEY_RESP = "dc_responsibilities";
     var KEY_DONE = "dc_done";
     var KEY_HISTORY = "dc_history";
     var KEY_THEME = "dc_theme";
+    var KEY_LAST_RESET = "dc_last_reset";
 
-    /* ---------- State ---------- */
     var responsibilities = loadJSON(KEY_RESP, []);
     var doneMap = loadJSON(KEY_DONE, {});
     var history = loadJSON(KEY_HISTORY, []);
@@ -684,7 +653,6 @@
     var activeFreq = "daily";
     var selectedDays = { every: true, days: [] };
 
-    /* ---------- DOM ---------- */
     var themeToggle = document.getElementById("themeToggle");
     var tabToday = document.getElementById("tabToday");
     var tabHistory = document.getElementById("tabHistory");
@@ -735,20 +703,21 @@
     }
     function pad(n) { return String(n).padStart(2, "0"); }
 
-    /* ---------- Date helpers ---------- */
+    /* ---------- Period keys (hour-safe) ---------- */
     function periodKey(freq) {
       var d = new Date();
       if (freq === "daily") {
         return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
       }
       if (freq === "weekly") {
-        var tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        var day = tmp.getUTCDay() || 7;
-        tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
-        var yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-        var weekNo = Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
-        return tmp.getUTCFullYear() + "-W" + pad(weekNo);
+        /* Days since Unix epoch, divided into 7-day blocks.
+           Week boundary is Monday (because 1 Jan 1970 was a Thursday,
+           we offset by 4 to align Monday). */
+        var days = Math.floor(d.getTime() / 86400000);
+        var weekNo = Math.floor((days + 4) / 7);
+        return "W" + weekNo;
       }
+      /* monthly */
       return d.getFullYear() + "-" + pad(d.getMonth() + 1);
     }
 
@@ -759,16 +728,12 @@
       return days[d.getDay()] + ", " + d.getDate() + " " + months[d.getMonth()] + " " + d.getFullYear();
     }
 
-    /* ---------- Applicable check (daily + day of week) ---------- */
+    /* ---------- Applicability ---------- */
     function isApplicableOnToday(r) {
       if (r.freq !== "daily") return true;
       if (!r.days || r.days.length === 0 || r.days.indexOf("every") !== -1) return true;
-      var today = new Date().getDay(); /* 0=Sun ... 6=Sat */
+      var today = new Date().getDay();
       return r.days.indexOf(String(today)) !== -1;
-    }
-
-    function todayApplicable() {
-      return responsibilities.filter(isApplicableOnToday);
     }
 
     /* ---------- Done tracking ---------- */
@@ -787,6 +752,19 @@
       if (state && idx === -1) arr.push(id);
       if (!state && idx !== -1) arr.splice(idx, 1);
       saveJSON(KEY_DONE, doneMap);
+    }
+
+    /* ---------- Auto-reset weekly/monthly on rollover ---------- */
+    function autoResetIfNeeded() {
+      var last = loadJSON(KEY_LAST_RESET, {});
+      var nowDaily = periodKey("daily");
+      var nowWeekly = periodKey("weekly");
+      var nowMonthly = periodKey("monthly");
+
+      if (last.daily !== nowDaily) last.daily = nowDaily;
+      if (last.weekly !== nowWeekly) last.weekly = nowWeekly;
+      if (last.monthly !== nowMonthly) last.monthly = nowMonthly;
+      saveJSON(KEY_LAST_RESET, last);
     }
 
     /* ---------- Render ---------- */
@@ -818,7 +796,6 @@
       sectionProgress.textContent = doneCount + " / " + items.length;
       sectionProgress.classList.toggle("zero", doneCount === 0);
 
-      /* Day picker only visible for daily */
       dayPicker.style.display = freq === "daily" ? "flex" : "none";
 
       if (items.length === 0) {
@@ -936,8 +913,7 @@
           var id = btn.getAttribute("data-copy");
           var rec = history.filter(function (r) { return r.id === id; })[0];
           if (!rec) return;
-          var text = buildTextRecord(rec);
-          copyText(text, btn);
+          copyText(buildTextRecord(rec), btn);
         });
       });
     }
@@ -956,7 +932,6 @@
         fallbackCopy(text); done();
       }
     }
-
     function fallbackCopy(text) {
       var ta = document.createElement("textarea");
       ta.value = text;
@@ -1104,7 +1079,7 @@
       applyTheme();
     }
 
-    /* ---------- Day picker interactions ---------- */
+    /* ---------- Day picker ---------- */
     function updateDayPickerUI() {
       var everyBtn = dayPicker.querySelector('[data-day="every"]');
       everyBtn.classList.toggle("active", selectedDays.every);
@@ -1149,6 +1124,7 @@
     });
 
     /* ---------- Init ---------- */
+    autoResetIfNeeded();
     dateLabel.textContent = todayLong();
     applyTheme();
     updateDayPickerUI();
