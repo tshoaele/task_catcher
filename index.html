@@ -576,26 +576,6 @@
   }
 
   .hidden { display: none !important; }
-
-  /* Debug panel */
-  .debug-panel {
-    margin-top: 1rem;
-    padding: 0.7rem 0.9rem;
-    background: #fffbe6;
-    border: 1px solid #fcd34d;
-    border-radius: 0.8rem;
-    font-family: ui-monospace, "Courier New", monospace;
-    font-size: 0.7rem;
-    color: #92400e;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-  [data-theme="dark"] .debug-panel {
-    background: #2a2000;
-    border-color: #a16207;
-    color: #fbbf24;
-  }
 </style>
 </head>
 
@@ -669,9 +649,6 @@
     </div>
 
     <div class="signature">Vuja Tsoaela</div>
-
-    <!-- Debug panel -->
-    <div class="debug-panel" id="debugPanel"></div>
   </div>
 
   <script>
@@ -706,7 +683,6 @@
     var sectionProgress = document.getElementById("sectionProgress");
     var dayPicker = document.getElementById("dayPicker");
     var daySummary = document.getElementById("daySummary");
-    var debugPanel = document.getElementById("debugPanel");
 
     var freqTabs = document.querySelectorAll(".freq-tab");
     var dayBtns = dayPicker.querySelectorAll(".day-btn");
@@ -832,7 +808,6 @@
               else selectedDays.days.splice(idx, 1);
             }
             updateDayPickerUI();
-            updateDebug();
           });
         })(dayBtns[i]);
       }
@@ -933,7 +908,6 @@
     function renderAll() {
       renderFreqTabs();
       renderSection();
-      updateDebug();
     }
 
     function renderHistory() {
@@ -1132,7 +1106,6 @@
         t.classList.toggle("active", t.getAttribute("data-freq") === freq);
       });
       renderSection();
-      updateDebug();
     }
 
     function applyTheme() {
@@ -1145,18 +1118,6 @@
       theme = theme === "dark" ? "light" : "dark";
       saveString(KEY_THEME, theme);
       applyTheme();
-    }
-
-    function updateDebug() {
-      if (!debugPanel) return;
-      var lines = [];
-      lines.push("BUILD: catcher-2026-10-05-A");
-      lines.push("Freq: " + activeFreq);
-      lines.push("Every: " + selectedDays.every);
-      lines.push("Days: [" + selectedDays.days.join(",") + "]");
-      lines.push("DayBtns: " + dayBtns.length);
-      lines.push("Tasks: " + responsibilities.length);
-      debugPanel.textContent = lines.join("\n");
     }
 
     themeToggle.addEventListener("click", toggleTheme);
@@ -1182,13 +1143,11 @@
     renderAll();
     renderHistory();
 
-    /* Service worker DISABLED for debugging. Uncomment the 3 lines below
-       when you are ready to ship again. */
-    /*
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").catch(function () {});
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function () {});
+      });
     }
-    */
   })();
   </script>
 </body>
