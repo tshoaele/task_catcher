@@ -1,7 +1,7 @@
 /* Daily Catcher — service worker
    Caches the app shell so it works offline. */
 
-const CACHE_NAME = "catcher-v4";
+const CACHE_NAME = "catcher-v6";
 const ASSETS = [
   "./",
   "./index.html",
